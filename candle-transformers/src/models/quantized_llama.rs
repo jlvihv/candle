@@ -257,8 +257,9 @@ impl ModelWeights {
     pub fn from_gguf<R: std::io::Seek + std::io::Read>(
         ct: gguf_file::Content,
         reader: &mut R,
+        device: Option<&Device>,
     ) -> Result<Self> {
-        let cpu = &Device::Cpu;
+        let device = device.unwrap_or(&Device::Cpu);
         let md_get = |s: &str| match ct.metadata.get(s) {
             None => candle::bail!("cannot find {s} in metadata"),
             Some(v) => Ok(v),
@@ -279,7 +280,7 @@ impl ModelWeights {
         let (cos, sin) = precomput_freqs_cis(rope_dim, rope_freq_base)?;
 
         let tok_embeddings = ct.tensor(reader, "token_embd.weight")?;
-        let tok_embeddings = tok_embeddings.dequantize(cpu)?;
+        let tok_embeddings = tok_embeddings.dequantize(device)?;
         let norm = RmsNorm::new(ct.tensor(reader, "output_norm.weight")?, rms_norm_eps)?;
         let output = ct.tensor(reader, "output.weight")?;
         let mut layers = Vec::with_capacity(block_count);
